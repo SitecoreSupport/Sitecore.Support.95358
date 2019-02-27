@@ -4,13 +4,15 @@ using Sitecore.Diagnostics;
 using Sitecore.Links;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Reflection;
 
 namespace Sitecore.Support.Data.Fields
 {
   public class HtmlField : Sitecore.Data.Fields.HtmlField
   {
+    static Type htmlFieldClassType = typeof(Sitecore.Data.Fields.HtmlField);
+    static MethodInfo addMediaLinkMethod = htmlFieldClassType.GetMethod("AddMediaLink", BindingFlags.Instance | BindingFlags.NonPublic);
+
     public HtmlField(Field innerField)
             : base(innerField)
     {
@@ -26,72 +28,25 @@ namespace Sitecore.Support.Data.Fields
         htmlDocument.LoadHtml(value);
         this.AddTextLinks(result, htmlDocument);
         this.AddMediaLinks(result, htmlDocument);
-        this.AddLinksMediaFlashManagers(result, htmlDocument);
-        this.AddVideoLink(result, htmlDocument);
       }
     }
     protected virtual void AddTextLinks(LinksValidationResult result, HtmlDocument document)
     {
-      Type typeFromHandle = typeof(Sitecore.Data.Fields.HtmlField);
-      MethodInfo method = typeFromHandle.GetMethod("AddTextLinks", BindingFlags.Instance | BindingFlags.NonPublic);
-      object obj = method.Invoke(this, new object[2]
-      {
-                result,
-                document
-      });
+      MethodInfo addTextLinksMethod = htmlFieldClassType.GetMethod("AddTextLinks", BindingFlags.Instance | BindingFlags.NonPublic);
+      addTextLinksMethod.Invoke(this, new object[] { result, document });
     }
 
     protected virtual void AddMediaLinks(LinksValidationResult result, HtmlDocument document)
     {
-      Type typeFromHandle = typeof(Sitecore.Data.Fields.HtmlField);
-      MethodInfo method = typeFromHandle.GetMethod("AddMediaLinks", BindingFlags.Instance | BindingFlags.NonPublic);
-      object obj = method.Invoke(this, new object[2]
-      {
-            result,
-            document
-      });
-    }
-
-    protected virtual void AddLinksMediaFlashManagers(LinksValidationResult result, HtmlDocument document)
-    {
-      Assert.ArgumentNotNull(result, "result");
-      Assert.ArgumentNotNull(document, "document");
-      HtmlNodeCollection htmlNodeCollection = document.DocumentNode.SelectNodes("//object");
-      if (htmlNodeCollection != null)
-      {
-        IEnumerable<HtmlNode> enumerable = from n in htmlNodeCollection.Nodes()
-                                           where n.Name == "embed"
-                                           select n;
-        foreach (HtmlNode item in enumerable)
-        {
-          this.AddLinkMediaManager1(result, item);
-        }
-      }
-    }
-
-    protected virtual void AddVideoLink(LinksValidationResult result, HtmlDocument document)
-    {
-      Assert.ArgumentNotNull(result, "result");
-      Assert.ArgumentNotNull(document, "document");
-      HtmlNodeCollection htmlNodeCollection = document.DocumentNode.SelectNodes("//video");
+      //covers img with other possible tags with src attribute, like audio, video, object/embeds etc.
+      HtmlNodeCollection htmlNodeCollection = document.DocumentNode.SelectNodes("//*[@src]");
       if (htmlNodeCollection != null)
       {
         foreach (HtmlNode item in (IEnumerable<HtmlNode>)htmlNodeCollection)
         {
-          this.AddLinkMediaManager1(result, item);
+          addMediaLinkMethod.Invoke(this, new object[] { result, item });
         }
       }
-    }
-
-    protected virtual void AddLinkMediaManager1(LinksValidationResult result, HtmlNode node)
-    {
-      Type typeFromHandle = typeof(Sitecore.Data.Fields.HtmlField);
-      MethodInfo method = typeFromHandle.GetMethod("AddMediaLink", BindingFlags.Instance | BindingFlags.NonPublic);
-      object obj = method.Invoke(this, new object[2]
-      {
-            result,
-            node
-      });
     }
   }
 }
